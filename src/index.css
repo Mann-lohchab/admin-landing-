@@ -78,6 +78,23 @@
   body {
     @apply bg-background text-foreground;
   }
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Full page layout utilities */
+.full-width-container {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.full-height-container {
+  height: 100vh !important;
+  min-height: 100vh !important;
 }
 
 /* Smooth transitions for theme changes */
@@ -110,4 +127,19 @@
 /* Selection styles */
 ::selection {
   @apply bg-primary text-primary-foreground;
+}
+
+/* Ensure content takes full available space */
+.content-container {
+  width: 100%;
+  max-width: none;
+  flex: 1;
+}
+
+/* Remove any default margins and ensure full width */
+.page-container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }

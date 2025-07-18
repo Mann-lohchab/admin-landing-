@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,14 +8,24 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Plus, Send, Bell, Clock, Users, Mail, Trash2, Eye } from 'lucide-react'
+import { Plus, Send, Calendar as CalendarIcon, Users, BookOpen, AlertCircle, CheckCircle, Clock, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { format, addDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 
-interface Notification {
+interface CalendarEvent {
+  id: number
+  date: string
+  title: string
+  type: 'exam' | 'assignment' | 'holiday' | 'meeting' | 'event'
+  description?: string
+  class?: string
+}
+
+interface Notice {
   id: number
   title: string
   message: string
-  type: 'announcement' | 'assignment' | 'reminder' | 'urgent'
-  recipient: 'all' | 'students' | 'parents' | 'specific'
+  targetClass: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
   status: 'draft' | 'sent' | 'scheduled'
   sentAt?: string
   scheduledFor?: string
@@ -24,82 +34,291 @@ interface Notification {
   createdAt: string
 }
 
-export const Notifications: React.FC = () => {
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [selectedFilter, setSelectedFilter] = useState('all')
+// Custom Calendar Component
+const CustomCalendar: React.FC<{
+  selectedDate: Date
+  onDateSelect: (date: Date) => void
+  events: CalendarEvent[]
+}> = ({ selectedDate, onDateSelect, events }) => {
+  const [currentMonth, setCurrentMonth] = useState(selectedDate)
 
-  const notifications: Notification[] = [
+  const monthStart = startOfMonth(currentMonth)
+  const monthEnd = endOfMonth(monthStart)
+  const startDate = startOfWeek(monthStart)
+  const endDate = endOfWeek(monthEnd)
+
+  const dateFormat = "d"
+  const rows = []
+
+  const getEventsForDate = (date: Date) => {
+    return events.filter(event => isSameDay(new Date(event.date), date))
+  }
+
+  const nextMonth = () => {
+    setCurrentMonth(addMonths(currentMonth, 1))
+  }
+
+  const prevMonth = () => {
+    setCurrentMonth(subMonths(currentMonth, 1))
+  }
+
+  const onDateClick = (day: Date) => {
+    onDateSelect(day)
+  }
+
+  // Header with month navigation
+  const renderHeader = () => {
+    return (
+      <div className="flex items-center justify-between p-4 border-b">
+        <Button variant="ghost" size="sm" onClick={prevMonth}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <h2 className="text-lg font-semibold">
+          {format(currentMonth, 'MMMM yyyy')}
+        </h2>
+        <Button variant="ghost" size="sm" onClick={nextMonth}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    )
+  }
+
+  // Days of week header
+  const renderDays = () => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    return (
+      <div className="grid grid-cols-7 border-b">
+        {days.map((day, index) => (
+          <div key={index} className="p-2 text-center text-sm font-medium text-muted-foreground">
+            {day}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Calendar cells
+  const renderCells = () => {
+    let day = startDate
+    const today = new Date()
+
+    while (day <= endDate) {
+      const week = []
+      for (let i = 0; i < 7; i++) {
+        const formattedDate = format(day, dateFormat)
+        const cloneDay = day
+        const dayEvents = getEventsForDate(day)
+        
+        week.push(
+          <div
+            key={day.toString()}
+            className={`
+              min-h-[80px] p-2 border-r border-b cursor-pointer transition-colors hover:bg-accent
+              ${!isSameMonth(day, monthStart) ? 'text-muted-foreground bg-muted/30' : 'bg-background'}
+              ${isSameDay(day, selectedDate) ? 'bg-primary/10 border-primary' : ''}
+              ${isSameDay(day, today) ? 'font-bold' : ''}
+            `}
+            onClick={() => onDateClick(cloneDay)}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-sm ${isSameDay(day, today) ? 'bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center' : ''}`}>
+                {formattedDate}
+              </span>
+              {dayEvents.length > 0 && (
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+              )}
+            </div>
+            <div className="mt-1 space-y-1">
+              {dayEvents.slice(0, 2).map((event) => (
+                <div
+                  key={event.id}
+                  className={`
+                    text-xs px-1 py-0.5 rounded truncate
+                    ${event.type === 'exam' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' : ''}
+                    ${event.type === 'assignment' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' : ''}
+                    ${event.type === 'meeting' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' : ''}
+                    ${event.type === 'holiday' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : ''}
+                    ${event.type === 'event' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' : ''}
+                  `}
+                >
+                  {event.title}
+                </div>
+              ))}
+              {dayEvents.length > 2 && (
+                <div className="text-xs text-muted-foreground">
+                  +{dayEvents.length - 2} more
+                </div>
+              )}
+            </div>
+          </div>
+        )
+        day = addDays(day, 1)
+      }
+      rows.push(
+        <div key={day.toString()} className="grid grid-cols-7">
+          {week}
+        </div>
+      )
+    }
+    return <div>{rows}</div>
+  }
+
+  return (
+    <div className="border rounded-lg bg-background">
+      {renderHeader()}
+      {renderDays()}
+      {renderCells()}
+    </div>
+  )
+}
+
+export const Notifications: React.FC = () => {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [showCreateNotice, setShowCreateNotice] = useState(false)
+  const [showAddEvent, setShowAddEvent] = useState(false)
+  const [notices, setNotices] = useState<Notice[]>([])
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+
+  // Mock data for events
+  const mockEvents: CalendarEvent[] = [
     {
       id: 1,
-      title: 'Parent-Teacher Meeting',
-      message: 'Dear parents, we have scheduled a parent-teacher meeting for next Friday at 2:00 PM. Please confirm your attendance.',
-      type: 'announcement',
-      recipient: 'parents',
-      status: 'sent',
-      sentAt: '2024-01-15T10:00:00Z',
-      readCount: 25,
-      totalRecipients: 30,
-      createdAt: '2024-01-15T09:30:00Z'
+      date: '2025-07-18',
+      title: 'Mathematics Unit Test',
+      type: 'exam',
+      description: 'Unit test on algebra and geometry',
+      class: 'Class 10-A'
     },
     {
       id: 2,
-      title: 'Assignment Due Reminder',
-      message: 'This is a reminder that your Math homework is due tomorrow. Please submit your work on time.',
-      type: 'reminder',
-      recipient: 'students',
-      status: 'sent',
-      sentAt: '2024-01-16T14:00:00Z',
-      readCount: 28,
-      totalRecipients: 30,
-      createdAt: '2024-01-16T13:45:00Z'
+      date: '2025-07-20',
+      title: 'Science Project',
+      type: 'assignment',
+      description: 'Physics project deadline',
+      class: 'Class 10-B'
     },
     {
       id: 3,
-      title: 'School Closure Notice',
-      message: 'Due to severe weather conditions, the school will be closed tomorrow. All classes are cancelled.',
-      type: 'urgent',
-      recipient: 'all',
-      status: 'sent',
-      sentAt: '2024-01-17T16:00:00Z',
-      readCount: 55,
-      totalRecipients: 60,
-      createdAt: '2024-01-17T15:30:00Z'
+      date: '2025-07-22',
+      title: 'Parent Meeting',
+      type: 'meeting',
+      description: 'Quarterly progress discussion'
     },
     {
       id: 4,
-      title: 'Science Fair Announcement',
-      message: 'We are excited to announce our annual science fair next month. More details will follow soon.',
-      type: 'announcement',
-      recipient: 'all',
-      status: 'draft',
-      readCount: 0,
-      totalRecipients: 60,
-      createdAt: '2024-01-18T11:00:00Z'
+      date: '2025-07-25',
+      title: 'Summer Break',
+      type: 'holiday',
+      description: 'Last day of classes'
     },
     {
       id: 5,
-      title: 'Weekly Progress Report',
-      message: 'Your weekly progress report is ready. Please review your child\'s performance and contact us if you have any questions.',
+      date: '2025-07-28',
+      title: 'English Literature Exam',
+      type: 'exam',
+      description: 'Final examination',
+      class: 'Class 9-A'
+    },
+    {
+      id: 6,
+      date: '2025-07-19',
+      title: 'Sports Day',
+      type: 'event',
+      description: 'Annual sports competition'
+    },
+    {
+      id: 7,
+      date: '2025-07-21',
+      title: 'Chemistry Lab',
       type: 'assignment',
-      recipient: 'parents',
-      status: 'scheduled',
-      scheduledFor: '2024-01-22T09:00:00Z',
-      readCount: 0,
-      totalRecipients: 30,
-      createdAt: '2024-01-18T12:00:00Z'
+      description: 'Lab report submission',
+      class: 'Class 10-A'
     }
   ]
 
-  const getTypeColor = (type: string) => {
+  // Mock data for notices
+  const mockNotices: Notice[] = [
+    {
+      id: 1,
+      title: 'Mathematics Test Postponed',
+      message: 'The mathematics unit test scheduled for tomorrow has been postponed to next Monday due to unforeseen circumstances.',
+      targetClass: 'Class 10-A',
+      priority: 'high',
+      status: 'sent',
+      sentAt: '2025-07-18T10:00:00Z',
+      readCount: 28,
+      totalRecipients: 30,
+      createdAt: '2025-07-18T09:45:00Z'
+    },
+    {
+      id: 2,
+      title: 'Science Lab Safety Guidelines',
+      message: 'Please ensure all students bring their safety goggles and lab coats for tomorrow\'s chemistry experiment.',
+      targetClass: 'Class 10-B',
+      priority: 'medium',
+      status: 'sent',
+      sentAt: '2025-07-17T14:30:00Z',
+      readCount: 25,
+      totalRecipients: 28,
+      createdAt: '2025-07-17T14:15:00Z'
+    },
+    {
+      id: 3,
+      title: 'Field Trip Permission Forms',
+      message: 'Please submit signed permission forms for the upcoming museum visit by Friday.',
+      targetClass: 'Class 9-A',
+      priority: 'medium',
+      status: 'draft',
+      readCount: 0,
+      totalRecipients: 32,
+      createdAt: '2025-07-18T11:30:00Z'
+    }
+  ]
+
+  const classes = ['Class 10-A', 'Class 10-B', 'Class 9-A', 'Class 9-B', 'Class 8-A']
+
+  useEffect(() => {
+    setEvents(mockEvents)
+    setNotices(mockNotices)
+  }, [])
+
+  // Get events for a specific date
+  const getEventsForDate = (date: Date) => {
+    return events.filter(event => 
+      isSameDay(new Date(event.date), date)
+    )
+  }
+
+  // Get events for selected date
+  const selectedDateEvents = getEventsForDate(selectedDate)
+
+  const getEventTypeColor = (type: string) => {
     switch (type) {
+      case 'exam':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+      case 'assignment':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+      case 'meeting':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      case 'holiday':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+      case 'event':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+    }
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
       case 'urgent':
         return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-      case 'announcement':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-      case 'assignment':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-      case 'reminder':
+      case 'high':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+      case 'medium':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+      case 'low':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
     }
@@ -118,41 +337,51 @@ export const Notifications: React.FC = () => {
     }
   }
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (selectedFilter === 'all') return true
-    return notification.status === selectedFilter
-  })
-
-  const CreateNotificationDialog = () => {
+  // Add Event Dialog and Create Notice Dialog components remain the same...
+  const CreateNoticeDialog = () => {
     const [formData, setFormData] = useState({
       title: '',
       message: '',
-      type: 'announcement',
-      recipient: 'all',
-      scheduleFor: '',
-      sendNow: true
+      targetClass: '',
+      priority: 'medium',
+      sendNow: true,
+      scheduleFor: ''
     })
 
     const handleSubmit = () => {
-      console.log('Creating notification:', formData)
-      setShowCreateDialog(false)
-      // Reset form
+      const newNotice: Notice = {
+        id: Date.now(),
+        title: formData.title,
+        message: formData.message,
+        targetClass: formData.targetClass,
+        priority: formData.priority as 'low' | 'medium' | 'high' | 'urgent',
+        status: formData.sendNow ? 'sent' : 'scheduled',
+        sentAt: formData.sendNow ? new Date().toISOString() : undefined,
+        scheduledFor: !formData.sendNow ? formData.scheduleFor : undefined,
+        readCount: formData.sendNow ? 0 : 0,
+        totalRecipients: 30,
+        createdAt: new Date().toISOString()
+      }
+
+      setNotices(prev => [newNotice, ...prev])
+      setShowCreateNotice(false)
+      
       setFormData({
         title: '',
         message: '',
-        type: 'announcement',
-        recipient: 'all',
-        scheduleFor: '',
-        sendNow: true
+        targetClass: '',
+        priority: 'medium',
+        sendNow: true,
+        scheduleFor: ''
       })
     }
 
     return (
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Notification</DialogTitle>
+          <DialogTitle>Send Notice to Students</DialogTitle>
           <DialogDescription>
-            Compose and send a notification to your recipients
+            Create and send a notice to your selected class
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -163,34 +392,34 @@ export const Notifications: React.FC = () => {
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
               className="col-span-3"
-              placeholder="Enter notification title"
+              placeholder="Enter notice title"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="type" className="text-right">Type</Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
+            <Label htmlFor="class" className="text-right">Class</Label>
+            <Select value={formData.targetClass} onValueChange={(value) => setFormData({...formData, targetClass: value})}>
               <SelectTrigger className="col-span-3">
-                <SelectValue />
+                <SelectValue placeholder="Select class" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="announcement">Announcement</SelectItem>
-                <SelectItem value="assignment">Assignment</SelectItem>
-                <SelectItem value="reminder">Reminder</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
+                {classes.map((cls) => (
+                  <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                ))}
+                <SelectItem value="all">All Classes</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="recipient" className="text-right">Recipients</Label>
-            <Select value={formData.recipient} onValueChange={(value) => setFormData({...formData, recipient: value})}>
+            <Label htmlFor="priority" className="text-right">Priority</Label>
+            <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
               <SelectTrigger className="col-span-3">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All (Students & Parents)</SelectItem>
-                <SelectItem value="students">Students Only</SelectItem>
-                <SelectItem value="parents">Parents Only</SelectItem>
-                <SelectItem value="specific">Specific Recipients</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -201,12 +430,12 @@ export const Notifications: React.FC = () => {
               value={formData.message}
               onChange={(e) => setFormData({...formData, message: e.target.value})}
               className="col-span-3"
-              placeholder="Enter your message here..."
+              placeholder="Enter your notice message..."
               rows={4}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="schedule" className="text-right">Schedule</Label>
+            <Label className="text-right">Send Options</Label>
             <div className="col-span-3 space-y-2">
               <div className="flex items-center space-x-2">
                 <input
@@ -240,19 +469,19 @@ export const Notifications: React.FC = () => {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+          <Button variant="outline" onClick={() => setShowCreateNotice(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>
             {formData.sendNow ? (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Send Now
+                Send Notice
               </>
             ) : (
               <>
                 <Clock className="mr-2 h-4 w-4" />
-                Schedule
+                Schedule Notice
               </>
             )}
           </Button>
@@ -261,133 +490,283 @@ export const Notifications: React.FC = () => {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Notifications</h2>
-          <p className="text-muted-foreground">
-            Send announcements and updates to students and parents
-          </p>
-        </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Notification
-            </Button>
-          </DialogTrigger>
-          <CreateNotificationDialog />
-        </Dialog>
-      </div>
+  const AddEventDialog = () => {
+    const [eventData, setEventData] = useState({
+      title: '',
+      type: 'event',
+      description: '',
+      class: '',
+      date: format(selectedDate, 'yyyy-MM-dd')
+    })
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Sent</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">24</div>
-            <p className="text-xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Read Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">87%</div>
-            <p className="text-xs text-muted-foreground">Average read rate</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Drafts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">3</div>
-            <p className="text-xs text-muted-foreground">Pending notifications</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Scheduled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">2</div>
-            <p className="text-xs text-muted-foreground">Future notifications</p>
-          </CardContent>
-        </Card>
-      </div>
+    const handleSubmit = () => {
+      const newEvent: CalendarEvent = {
+        id: Date.now(),
+        title: eventData.title,
+        type: eventData.type as 'exam' | 'assignment' | 'holiday' | 'meeting' | 'event',
+        description: eventData.description,
+        class: eventData.class || undefined,
+        date: eventData.date
+      }
 
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Notification History</CardTitle>
-              <CardDescription>
-                View and manage all your notifications
-              </CardDescription>
-            </div>
-            <Select value={selectedFilter} onValueChange={setSelectedFilter}>
-              <SelectTrigger className="w-[180px]">
+      setEvents(prev => [...prev, newEvent])
+      setShowAddEvent(false)
+      
+      setEventData({
+        title: '',
+        type: 'event',
+        description: '',
+        class: '',
+        date: format(selectedDate, 'yyyy-MM-dd')
+      })
+    }
+
+    return (
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Calendar Event</DialogTitle>
+          <DialogDescription>
+            Add a new event or exam to the calendar
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="eventTitle" className="text-right">Title</Label>
+            <Input
+              id="eventTitle"
+              value={eventData.title}
+              onChange={(e) => setEventData({...eventData, title: e.target.value})}
+              className="col-span-3"
+              placeholder="Event title"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="eventType" className="text-right">Type</Label>
+            <Select value={eventData.type} onValueChange={(value) => setEventData({...eventData, type: value})}>
+              <SelectTrigger className="col-span-3">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Notifications</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="draft">Drafts</SelectItem>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="exam">Exam</SelectItem>
+                <SelectItem value="assignment">Assignment</SelectItem>
+                <SelectItem value="meeting">Meeting</SelectItem>
+                <SelectItem value="holiday">Holiday</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="eventDate" className="text-right">Date</Label>
+            <Input
+              id="eventDate"
+              type="date"
+              value={eventData.date}
+              onChange={(e) => setEventData({...eventData, date: e.target.value})}
+              className="col-span-3"
+            />
+          </div>
+          {(eventData.type === 'exam' || eventData.type === 'assignment') && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="eventClass" className="text-right">Class</Label>
+              <Select value={eventData.class} onValueChange={(value) => setEventData({...eventData, class: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="eventDescription" className="text-right pt-2">Description</Label>
+            <Textarea
+              id="eventDescription"
+              value={eventData.description}
+              onChange={(e) => setEventData({...eventData, description: e.target.value})}
+              className="col-span-3"
+              placeholder="Event description (optional)"
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowAddEvent(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Event
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    )
+  }
+
+  return (
+    <div className="w-full max-w-none space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Notifications & Calendar</h2>
+          <p className="text-muted-foreground">
+            Manage events, exams, and send notices to students
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Dialog open={showAddEvent} onOpenChange={setShowAddEvent}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Add Event
+              </Button>
+            </DialogTrigger>
+            <AddEventDialog />
+          </Dialog>
+          <Dialog open={showCreateNotice} onOpenChange={setShowCreateNotice}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Send Notice
+              </Button>
+            </DialogTrigger>
+            <CreateNoticeDialog />
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Enhanced Calendar Section */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CalendarIcon className="mr-2 h-5 w-5" />
+                Academic Calendar
+              </CardTitle>
+              <CardDescription>
+                Click on dates to view events. Today is highlighted with a blue circle.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <CustomCalendar
+                selectedDate={selectedDate}
+                onDateSelect={setSelectedDate}
+                events={events}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Events for Selected Date */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Events on {format(selectedDate, 'EEEE, MMM dd, yyyy')}</CardTitle>
+            <CardDescription>
+              {selectedDateEvents.length} event(s) scheduled
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {selectedDateEvents.length > 0 ? (
+              <div className="space-y-3">
+                {selectedDateEvents.map((event) => (
+                  <div key={event.id} className="p-3 border rounded-lg hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="font-medium text-foreground">{event.title}</h4>
+                          <Badge className={getEventTypeColor(event.type)}>
+                            {event.type}
+                          </Badge>
+                        </div>
+                        {event.description && (
+                          <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
+                        )}
+                        {event.class && (
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <BookOpen className="mr-1 h-3 w-3" />
+                            {event.class}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No events scheduled for this date</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => setShowAddEvent(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Event
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Notice Board Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Send className="mr-2 h-5 w-5" />
+            Notice Board
+          </CardTitle>
+          <CardDescription>
+            Recent notices sent to students and parents
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredNotifications.map((notification) => (
-              <Card key={notification.id} className="hover:shadow-md transition-shadow">
+            {notices.map((notice) => (
+              <Card key={notice.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="pt-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-semibold text-foreground">{notification.title}</h3>
-                        <Badge className={getTypeColor(notification.type)}>
-                          {notification.type}
+                        <h3 className="font-semibold text-foreground">{notice.title}</h3>
+                        <Badge className={getPriorityColor(notice.priority)}>
+                          {notice.priority}
                         </Badge>
-                        <Badge className={getStatusColor(notification.status)}>
-                          {notification.status}
+                        <Badge className={getStatusColor(notice.status)}>
+                          {notice.status}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {notification.message}
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {notice.message}
                       </p>
                       <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                         <div className="flex items-center">
                           <Users className="mr-1 h-3 w-3" />
-                          {notification.recipient}
+                          {notice.targetClass}
                         </div>
-                        {notification.status === 'sent' && (
+                        {notice.status === 'sent' && (
                           <div className="flex items-center">
-                            <Eye className="mr-1 h-3 w-3" />
-                            {notification.readCount}/{notification.totalRecipients} read
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            {notice.readCount}/{notice.totalRecipients} read
                           </div>
                         )}
                         <div className="flex items-center">
                           <Clock className="mr-1 h-3 w-3" />
-                          {notification.sentAt ? 
-                            `Sent ${new Date(notification.sentAt).toLocaleDateString()}` :
-                            notification.scheduledFor ?
-                            `Scheduled for ${new Date(notification.scheduledFor).toLocaleDateString()}` :
-                            `Created ${new Date(notification.createdAt).toLocaleDateString()}`
+                          {notice.sentAt ? 
+                            `Sent ${format(new Date(notice.sentAt), 'MMM dd, HH:mm')}` :
+                            notice.scheduledFor ?
+                            `Scheduled for ${format(new Date(notice.scheduledFor), 'MMM dd, HH:mm')}` :
+                            `Created ${format(new Date(notice.createdAt), 'MMM dd, HH:mm')}`
                           }
                         </div>
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {notification.status === 'draft' && (
+                      {notice.status === 'draft' && (
                         <Button variant="ghost" size="sm">
                           <Send className="h-4 w-4" />
                         </Button>
@@ -400,9 +779,9 @@ export const Notifications: React.FC = () => {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Notification</AlertDialogTitle>
+                            <AlertDialogTitle>Delete Notice</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete this notification? This action cannot be undone.
+                              Are you sure you want to delete this notice? This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

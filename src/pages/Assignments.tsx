@@ -38,6 +38,36 @@ export const Assignments: React.FC = () => {
       submissions: 30,
       totalStudents: 30,
       status: 'completed'
+    },
+    {
+      id: 4,
+      title: 'English Literature Review',
+      description: 'Analyze the themes in Shakespeare\'s Hamlet',
+      dueDate: '2024-01-25',
+      subject: 'English',
+      submissions: 8,
+      totalStudents: 30,
+      status: 'active'
+    },
+    {
+      id: 5,
+      title: 'Geography Project',
+      description: 'Create a presentation on climate change effects',
+      dueDate: '2024-01-30',
+      subject: 'Geography',
+      submissions: 12,
+      totalStudents: 30,
+      status: 'active'
+    },
+    {
+      id: 6,
+      title: 'Physics Problem Set',
+      description: 'Solve problems related to Newton\'s laws',
+      dueDate: '2024-02-05',
+      subject: 'Physics',
+      submissions: 5,
+      totalStudents: 30,
+      status: 'active'
     }
   ]
 
@@ -53,7 +83,7 @@ export const Assignments: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-none space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Assignments</h2>
@@ -68,7 +98,7 @@ export const Assignments: React.FC = () => {
       </div>
 
       {showForm && (
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>Create New Assignment</CardTitle>
             <CardDescription>
@@ -87,12 +117,12 @@ export const Assignments: React.FC = () => {
         </Card>
       )}
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 w-full">
         {assignments.map((assignment) => (
-          <Card key={assignment.id} className="hover:shadow-lg transition-shadow">
+          <Card key={assignment.id} className="hover:shadow-lg transition-shadow w-full">
             <CardHeader>
               <div className="flex justify-between items-start">
-                <div>
+                <div className="flex-1">
                   <CardTitle className="text-lg">{assignment.title}</CardTitle>
                   <CardDescription className="mt-1">
                     {assignment.description}
@@ -104,20 +134,27 @@ export const Assignments: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Calendar className="mr-1 h-4 w-4" />
                     Due: {new Date(assignment.dueDate).toLocaleDateString()}
                   </div>
                   <div className="flex items-center">
                     <Users className="mr-1 h-4 w-4" />
-                    {assignment.submissions}/{assignment.totalStudents} submitted
+                    {assignment.submissions}/{assignment.totalStudents}
                   </div>
                 </div>
+                <div className="text-sm">
+                  <span className="font-medium">Subject:</span> {assignment.subject}
+                </div>
                 <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">Edit</Button>
-                  <Button variant="outline" size="sm">View</Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    Edit
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    View
+                  </Button>
                 </div>
               </div>
             </CardContent>

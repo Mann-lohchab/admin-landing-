@@ -36,7 +36,7 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
   const location = useLocation()
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full bg-background">
       <Sidebar className="border-r border-border">
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-2">
@@ -77,9 +77,9 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
         </SidebarFooter>
       </Sidebar>
       
-      <SidebarInset className="flex-1">
+      <SidebarInset className="flex-1 w-full max-w-none">
         <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex h-14 items-center px-4">
+          <div className="flex h-14 items-center px-4 w-full">
             <SidebarTrigger />
             <div className="ml-auto flex items-center space-x-4">
               <div className="text-sm text-muted-foreground">
@@ -89,8 +89,10 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
           </div>
         </header>
         
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto p-6 w-full max-w-none">
+          <div className="w-full max-w-none">
+            {children}
+          </div>
         </main>
       </SidebarInset>
     </div>
