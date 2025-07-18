@@ -1,40 +1,48 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { DesktopLayout } from "./components/layout/DesktopLayout";
-import Dashboard from "./pages/Dashboard";
-import Students from "./pages/Students";
-import Assignments from "./pages/Assignments";
-import Marks from "./pages/Marks";
-import Notifications from "./pages/Notifications";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+import { SidebarProvider } from '@/components/ui/sidebar'
+import { DesktopLayout } from '@/components/layout/DesktopLayout'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { Dashboard } from '@/pages/Dashboard'
+import { Assignments } from '@/pages/Assignments'
+import { Marks } from '@/pages/Marks'
+import { Notifications } from '@/pages/Notifications'
+import { Attendance } from '@/pages/Attendance'
+import { Home, BookOpen, Users, Bell, BarChart3, UserCheck } from 'lucide-react'
 
-const queryClient = new QueryClient();
+const navigationItems = [
+  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Assignments', href: '/assignments', icon: BookOpen },
+  { name: 'Attendance', href: '/attendance', icon: UserCheck },
+  { name: 'Marks', href: '/marks', icon: BarChart3 },
+  { name: 'Students', href: '/students', icon: Users },
+  { name: 'Notifications', href: '/notifications', icon: Bell },
+]
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <DesktopLayout notificationCount={5}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/students" element={<Students />} />
-            <Route path="/assignments" element={<Assignments />} />
-            <Route path="/marks" element={<Marks />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/profile" element={<Profile />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </DesktopLayout>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <ThemeProvider defaultTheme="system">
+      <Router>
+        <SidebarProvider>
+          <div className="min-h-screen bg-background font-sans antialiased">
+            <DesktopLayout 
+              navigation={navigationItems}
+              themeToggle={<ThemeToggle />}
+            >
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/assignments" element={<Assignments />} />
+                <Route path="/attendance" element={<Attendance />} />
+                <Route path="/marks" element={<Marks />} />
+                <Route path="/notifications" element={<Notifications />} />
+              </Routes>
+            </DesktopLayout>
+          </div>
+        </SidebarProvider>
+      </Router>
+    </ThemeProvider>
+  )
+}
 
-export default App;
+export default App

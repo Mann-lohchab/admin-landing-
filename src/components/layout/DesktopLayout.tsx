@@ -1,71 +1,98 @@
-import { ReactNode } from "react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "./AppSidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { cn } from '@/lib/utils'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
+import { GraduationCap, LogOut } from 'lucide-react'
 
-interface DesktopLayoutProps {
-  children: ReactNode;
-  onNotificationClick?: () => void;
-  notificationCount?: number;
+interface NavigationItem {
+  name: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
 }
 
-export const DesktopLayout = ({ 
-  children, 
-  onNotificationClick, 
-  notificationCount 
-}: DesktopLayoutProps) => {
+interface DesktopLayoutProps {
+  children: React.ReactNode
+  navigation: NavigationItem[]
+  themeToggle: React.ReactNode
+}
+
+export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
+  children,
+  navigation,
+  themeToggle,
+}) => {
+  const location = useLocation()
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
+    <div className="flex h-screen bg-background">
+      <Sidebar className="border-r border-border">
+        <SidebarHeader className="p-4">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-8 w-8 text-primary" />
+            <h1 className="text-xl font-bold text-foreground">TeacherHub</h1>
+          </div>
+        </SidebarHeader>
         
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Teacher Portal</h1>
-                <p className="text-xs text-muted-foreground">Manage your classes efficiently</p>
+        <SidebarContent>
+          <SidebarMenu>
+            {navigation.map((item) => (
+              <SidebarMenuItem key={item.name}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === item.href}
+                  className={cn(
+                    "w-full justify-start",
+                    location.pathname === item.href && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <Link to={item.href}>
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.name}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+        
+        <SidebarFooter className="p-4">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon">
+              <LogOut className="h-4 w-4" />
+            </Button>
+            {themeToggle}
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+      
+      <SidebarInset className="flex-1">
+        <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex h-14 items-center px-4">
+            <SidebarTrigger />
+            <div className="ml-auto flex items-center space-x-4">
+              <div className="text-sm text-muted-foreground">
+                Welcome back, Teacher!
               </div>
             </div>
-            
-            <div className="flex items-center gap-4">
-              {/* Notifications */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative"
-                onClick={onNotificationClick}
-              >
-                <Bell className="h-5 w-5" />
-                {notificationCount && notificationCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </Badge>
-                )}
-              </Button>
-              
-              {/* User Avatar */}
-              <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback className="bg-primary text-primary-foreground">MA</AvatarFallback>
-              </Avatar>
-            </div>
-          </header>
-          
-          {/* Main Content */}
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-  );
-};
+          </div>
+        </header>
+        
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
+        </main>
+      </SidebarInset>
+    </div>
+  )
+}
