@@ -5,20 +5,18 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { DesktopLayout } from '@/components/layout/DesktopLayout'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Dashboard } from '@/pages/Dashboard'
-import { Assignments } from '@/pages/Assignments'
-import { Marks } from '@/pages/Marks'
+import { Teachers } from '@/pages/Teacher'
 import { Notifications } from '@/pages/Notifications'
-import { Attendance } from '@/pages/Attendance'
 import { Students } from '@/pages/Students'
-import { Home, BookOpen, Users, Bell, BarChart3, UserCheck } from 'lucide-react'
+import { Classes } from '@/pages/Classes' // This should work fine now
 
-// Navigation items for the sidebar
+import { Home, Users, UserCheck, Bell, School } from 'lucide-react'
+
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Students', href: '/students', icon: Users },
-  { name: 'Assignments', href: '/assignments', icon: BookOpen },
-  { name: 'Attendance', href: '/attendance', icon: UserCheck },
-  { name: 'Marks', href: '/marks', icon: BarChart3 },
+  { name: 'Teachers', href: '/teachers', icon: UserCheck },
+  { name: 'Classes', href: '/classes', icon: School },
   { name: 'Notifications', href: '/notifications', icon: Bell },
 ]
 
@@ -35,9 +33,12 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/students" element={<Students />} />
-                <Route path="/assignments" element={<Assignments />} />
-                <Route path="/attendance" element={<Attendance />} />
-                <Route path="/marks" element={<Marks />} />
+                <Route path="/students/add" element={<Students />} />
+                <Route path="/teachers" element={<Teachers />} />
+                <Route path="/teachers/add" element={<Teachers />} /> 
+                <Route path="/classes" element={<Classes />} />
+                {/* <Route path="/classes" element={<Classes />} />
+                <Route path="/classes/add" element={<Classes />} /> */}
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -49,7 +50,6 @@ function App() {
   )
 }
 
-// 404 Not Found component
 const NotFound: React.FC = () => {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
